@@ -1,5 +1,9 @@
 syntax = "proto3";
 
+package githubsearch;
+
+option go_package = "github-search-service/api;api";
+
 // The GithubSearchService allows clients to search public GitHub code using gRPC.
 service GithubSearchService {
   // Search performs a code search on GitHub using the provided term and optional user.

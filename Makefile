@@ -25,4 +25,8 @@ clean:
 	rm -f api/githubsearch.pb.go api/githubsearch_grpc.pb.go
 	rm -f github-search-server
 
-.PHONY: all proto server client build test clean
+proto-buf:
+	buf generate
+
+.PHONY: all proto server client build test clean proto-buf
+
