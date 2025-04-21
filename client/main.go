@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"os"
 	"time"
@@ -12,8 +13,15 @@ import (
 )
 
 func main() {
-	serverAddr := getServerAddr()
+	searchTerm := flag.String("term", "", "Search term (e.g., filename:Dockerfile)")
+	searchUser := flag.String("user", "", "GitHub username to scope the search")
+	flag.Parse()
 
+	if *searchTerm == "" {
+		log.Fatalln("Search term is required. Use -term flag to specify it.")
+	}
+
+	serverAddr := getServerAddr()
 	conn, client := newSearchClient(serverAddr)
 	defer conn.Close()
 
@@ -22,7 +30,7 @@ func main() {
 
 	log.Println("Sending search request...")
 
-	resp, err := performSearch(ctx, client, "filename:Dockerfile", "")
+	resp, err := performSearch(ctx, client, *searchTerm, *searchUser)
 	if err != nil {
 		log.Fatalf("Search failed: %v", err)
 	}
@@ -36,7 +44,6 @@ func main() {
 	}
 }
 
-// getServerAddr returns the gRPC server address from env or default
 func getServerAddr() string {
 	addr := os.Getenv("SERVER_ADDR")
 	if addr == "" {
@@ -45,7 +52,6 @@ func getServerAddr() string {
 	return addr
 }
 
-// newSearchClient sets up a gRPC connection and returns the client
 func newSearchClient(addr string) (*grpc.ClientConn, pb.GithubSearchServiceClient) {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
@@ -55,7 +61,6 @@ func newSearchClient(addr string) (*grpc.ClientConn, pb.GithubSearchServiceClien
 	return conn, client
 }
 
-// performSearch constructs and sends a SearchRequest to the server
 func performSearch(ctx context.Context, client pb.GithubSearchServiceClient, term, user string) (*pb.SearchResponse, error) {
 	return client.Search(ctx, &pb.SearchRequest{
 		SearchTerm: term,

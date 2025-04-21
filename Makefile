@@ -13,7 +13,7 @@ server:
 	go run server/main.go server/service.go
 
 client:
-	go run client/main.go
+	go run client/main.go -term="$(term)" -user="$(user)"
 
 build:
 	go build -o github-search-server ./server

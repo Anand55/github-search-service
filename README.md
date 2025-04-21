@@ -8,40 +8,43 @@ This is a gRPC-based microservice in Go that wraps GitHub's REST API to perform 
 - gRPC server using Protobuf definitions
 - Integration with GitHub's Search API (`/search/code`)
 - Optional filtering by GitHub username
+- Command-line flags for dynamic search term/user
 - Docker support for containerized execution
+- Unit test coverage for success and error flows
 
 ---
 
 ## Code Flow Overview
 
 1. **Client (`client/main.go`)**
-    - Constructs a `SearchRequest` with a `search_term` and an optional `user`.
-    - Sends the request to the gRPC server at `localhost:50051` (or Docker Compose service name).
+    - Accepts `-term` and `-user` via CLI flags
+    - Constructs a `SearchRequest` and sends it to the gRPC server
+    - Logs results or errors from the server
 
 2. **Server (`server/main.go` & `server/service.go`)**
-    - Listens on port 50051.
-    - On receiving a request, constructs a GitHub API query URL.
-    - Adds authentication and headers.
-    - Parses the JSON response.
-    - Converts results to gRPC-compatible `SearchResponse`.
+    - Initializes a single shared `http.Client`
+    - Listens on port 50051 and handles `Search` requests
+    - Constructs GitHub API query
+    - Handles API responses, including non-200 and parsing errors
+    - Returns parsed results in `SearchResponse`
 
 3. **API Protobuf (`api/githubsearch.proto`)**
-    - Defines service `GithubSearchService` and messages `SearchRequest`, `SearchResponse`, `Result`.
+    - Defines service `GithubSearchService` and messages `SearchRequest`, `SearchResponse`, `Result`
 
 ---
 
 ## Limitations
 
-- By default, the GitHub API only returns **30 results** per request (first page only).
-- The current implementation does **not support pagination** and therefore only fetches the first page.
+- GitHub API returns **only the first 30 results** by default.
+- No pagination support implemented yet.
 
 ### Current Request Behavior
 
 #### gRPC Request Parameters in Client Code
 ```go
 resp, err := client.Search(ctx, &pb.SearchRequest{
-    SearchTerm: "filename:Dockerfile", // exact filename match
-    User:       "",                    // optional GitHub username (empty = global search)
+    SearchTerm: "filename:Dockerfile",
+    User:       "",
 })
 ```
 
@@ -49,38 +52,32 @@ resp, err := client.Search(ctx, &pb.SearchRequest{
 ```http
 GET https://api.github.com/search/code?q=filename:Dockerfile
 ```
-- The `q` parameter combines both the search term and (optionally) the user qualifier.
-- No `page` or `per_page` parameters are passed, so GitHub returns **only the first 30 results** by default.
-- Constructed GitHub API call: `GET /search/code?q=<search_term> [user:<username>]`
-- Returns at most 30 results due to GitHub API's default `per_page` setting.
+- Uses `filename:` qualifier to narrow the search
+- No `page` or `per_page`, so returns only first 30 results
 
 ### How to Fix Pagination
 
 #### Option 1: Extend the Protobuf Definition (Recommended)
-Update `api/githubsearch.proto` to:
 ```proto
 message SearchRequest {
   string search_term = 1;
   string user = 2;
-  int32 page = 3;         // page number
-  int32 per_page = 4;     // results per page (max 100)
+  int32 page = 3;
+  int32 per_page = 4;
 }
 ```
-Then update server to build GitHub query like:
+And build URLs like:
 ```go
 fmt.Sprintf("https://api.github.com/search/code?q=%s&page=%d&per_page=%d", query, page, perPage)
 ```
 
-#### Option 2: Handle Pagination Internally (No Protobuf Change)
-Loop over `page=1..N` inside the server and merge all results:
+#### Option 2: Paginate Internally (No Proto Change)
+Loop inside the server:
 ```go
 for page := 1; page <= 3; page++ {
-  // build URL with ?page=page&per_page=30
-  // merge results
+  // build ?page=X&per_page=30, merge results
 }
 ```
-This hides pagination from the client, but removes fine control over page/limit.
-
 ---
 
 ## Prerequisites
@@ -93,12 +90,13 @@ This hides pagination from the client, but removes fine control over page/limit.
   go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
   go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
   ```
-- GitHub Personal Access Token (set as environment variable `GITHUB_TOKEN`)
+- GitHub Personal Access Token (export as `GITHUB_TOKEN`)
 
 ---
 
 ## Environment Variables
-- `GITHUB_TOKEN`: GitHub personal access token for authenticated requests to increase rate limits.
+- `GITHUB_TOKEN`: GitHub personal access token for authenticated requests
+- `SERVER_ADDR`: Optional override for gRPC server address (defaults to `localhost:50051`)
 
 ---
 
@@ -106,7 +104,7 @@ This hides pagination from the client, but removes fine control over page/limit.
 
 ### Step 1: Generate gRPC code
 ```bash
-make
+make proto
 ```
 
 ### Step 2: Export GitHub token
@@ -116,12 +114,12 @@ export GITHUB_TOKEN=ghp_your_token_here
 
 ### Step 3: Start server
 ```bash
-go run server/main.go server/service.go
+make server
 ```
 
-### Step 4: In another terminal, run client
+### Step 4: Run client with flags
 ```bash
-go run client/main.go
+make client term="filename:Dockerfile" user="torvalds"
 ```
 
 ---
@@ -133,7 +131,7 @@ go run client/main.go
 docker build -t github-search-service .
 ```
 
-### Step 2: Run container with GitHub token
+### Step 2: Run with GitHub token
 ```bash
 docker run -e GITHUB_TOKEN=ghp_your_token_here -p 50051:50051 github-search-service
 ```
@@ -142,18 +140,27 @@ docker run -e GITHUB_TOKEN=ghp_your_token_here -p 50051:50051 github-search-serv
 
 ## Running With Docker Compose
 
-### Step 1: Create `.env` file (optional)
+### Step 1: Optional `.env` file
 ```env
 GITHUB_TOKEN=ghp_your_token_here
 ```
 
-### Step 2: Start all services
+### Step 2: Launch stack
 ```bash
 docker-compose up --build
 ```
 
-- The server will be reachable as `github-search-server:50051` from inside Docker.
-- The client will log results returned from the gRPC server.
+---
+
+## Makefile Targets
+```makefile
+make proto       # Generate protobuf and gRPC code
+make build       # Build server binary
+make server      # Run server locally
+make client      # Run client with flags: make client term=... user=...
+make test        # Run unit tests
+make clean       # Cleanup generated files and binaries
+```
 
 ---
 
@@ -163,10 +170,10 @@ docker-compose up --build
 ├── api/                    # Proto definitions and generated code
 ├── client/                 # gRPC client code
 ├── server/                 # gRPC server implementation
-├── Dockerfile              # Dockerfile for building server image
-├── Dockerfile.client       # Dockerfile for client (used in Docker Compose)
-├── docker-compose.yml      # Compose file to run server + client
-├── Makefile                # Builds proto files
-├── go.mod / go.sum         # Go dependencies
+├── Dockerfile              # Dockerfile for server
+├── Dockerfile.client       # Dockerfile for client
+├── docker-compose.yml      # Docker Compose setup
+├── Makefile                # Dev and build automation
+├── go.mod / go.sum         # Dependencies
 └── README.md
 ```
