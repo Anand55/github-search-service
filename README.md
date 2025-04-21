@@ -11,6 +11,7 @@ This is a gRPC-based microservice in Go that wraps GitHub's REST API to perform 
 - Command-line flags for dynamic search term/user
 - Docker support for containerized execution
 - Unit test coverage for success and error flows
+- Buf integration for clean proto generation and linting
 
 ---
 
@@ -30,6 +31,7 @@ This is a gRPC-based microservice in Go that wraps GitHub's REST API to perform 
 
 3. **API Protobuf (`api/githubsearch.proto`)**
     - Defines service `GithubSearchService` and messages `SearchRequest`, `SearchResponse`, `Result`
+    - Supports generation via Buf
 
 ---
 
@@ -90,6 +92,13 @@ for page := 1; page <= 3; page++ {
   go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
   go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
   ```
+- **Buf CLI (for proto linting and generation)**
+  - MacOS: `brew install bufbuild/buf/buf`
+  - Linux:
+    ```bash
+    curl -sSL https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m) \
+      -o /usr/local/bin/buf && chmod +x /usr/local/bin/buf
+    ```
 - GitHub Personal Access Token (export as `GITHUB_TOKEN`)
 
 ---
@@ -104,7 +113,7 @@ for page := 1; page <= 3; page++ {
 
 ### Step 1: Generate gRPC code
 ```bash
-make proto
+make proto-buf
 ```
 
 ### Step 2: Export GitHub token
@@ -154,12 +163,14 @@ docker-compose up --build
 
 ## Makefile Targets
 ```makefile
-make proto       # Generate protobuf and gRPC code
-make build       # Build server binary
-make server      # Run server locally
-make client      # Run client with flags: make client term=... user=...
-make test        # Run unit tests
-make clean       # Cleanup generated files and binaries
+make proto         # (legacy) Generate code using protoc
+make proto-buf     # Generate code using Buf
+make lint-buf      # Lint proto files using Buf
+make build         # Build server binary
+make server        # Run server locally
+make client        # Run client with flags: make client term=... user=...
+make test          # Run unit tests
+make clean         # Cleanup generated files and binaries
 ```
 
 ---
@@ -174,6 +185,8 @@ make clean       # Cleanup generated files and binaries
 ├── Dockerfile.client       # Dockerfile for client
 ├── docker-compose.yml      # Docker Compose setup
 ├── Makefile                # Dev and build automation
+├── buf.gen.yaml            # Buf code generation config
+├── buf.yaml                # Buf lint/breaking config
 ├── go.mod / go.sum         # Dependencies
 └── README.md
 ```
