@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +15,7 @@ import (
 
 type githubSearchServer struct {
 	pb.UnimplementedGithubSearchServiceServer
+	httpClient *http.Client
 }
 
 type GitHubItem struct {
@@ -29,44 +30,51 @@ type GitHubResponse struct {
 }
 
 func (s *githubSearchServer) Search(ctx context.Context, req *pb.SearchRequest) (*pb.SearchResponse, error) {
-
-	// Construct GitHub search query with optional user filter
 	query := req.SearchTerm
 	if req.User != "" {
 		query += " user:" + req.User
 	}
 
-	// Build GitHub API URL using the constructed query
 	url := fmt.Sprintf("https://api.github.com/search/code?q=%s", strings.ReplaceAll(query, " ", "+"))
 
-	// Prepare authenticated HTTP request to GitHub API
-	reqHTTP, _ := http.NewRequest("GET", url, nil)
+	reqHTTP, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Printf("Failed to build HTTP request: %v", err)
+		return nil, fmt.Errorf("failed to build GitHub API request: %w", err)
+	}
+
 	reqHTTP.Header.Set("Accept", "application/vnd.github+json")
 	reqHTTP.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-	// Set GitHub token if available
 	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 		reqHTTP.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(reqHTTP)
+	resp, err := s.httpClient.Do(reqHTTP)
 	if err != nil {
-		log.Println("GitHub API error:", err)
-		return nil, err
+		log.Printf("GitHub API call failed: %v", err)
+		return nil, fmt.Errorf("GitHub API call failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Failed to read response body: %v", err)
+		return nil, fmt.Errorf("failed to read GitHub response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("GitHub API returned non-200 status: %d\nResponse: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("GitHub API error (%d): %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
 
 	var ghResp GitHubResponse
-
-	// Parse GitHub API response into Go structs
-	json.Unmarshal(body, &ghResp)
+	if err := json.Unmarshal(body, &ghResp); err != nil {
+		log.Printf("Failed to parse GitHub response: %v", err)
+		return nil, fmt.Errorf("failed to parse GitHub response: %w", err)
+	}
 
 	var results []*pb.Result
-
-	// Convert GitHub search results into gRPC-compatible format
 	for _, item := range ghResp.Items {
 		results = append(results, &pb.Result{
 			FileUrl: item.HTMLURL,
@@ -74,5 +82,6 @@ func (s *githubSearchServer) Search(ctx context.Context, req *pb.SearchRequest) 
 		})
 	}
 
+	log.Printf("Successfully fetched %d results", len(results))
 	return &pb.SearchResponse{Results: results}, nil
 }

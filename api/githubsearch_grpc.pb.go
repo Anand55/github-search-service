@@ -19,13 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GithubSearchService_Search_FullMethodName = "/githubsearch.GithubSearchService/Search"
+	GithubSearchService_Search_FullMethodName = "/GithubSearchService/Search"
 )
 
 // GithubSearchServiceClient is the client API for GithubSearchService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// The GithubSearchService allows clients to search public GitHub code using gRPC.
 type GithubSearchServiceClient interface {
+	// Search performs a code search on GitHub using the provided term and optional user.
 	Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error)
 }
 
@@ -50,7 +53,10 @@ func (c *githubSearchServiceClient) Search(ctx context.Context, in *SearchReques
 // GithubSearchServiceServer is the server API for GithubSearchService service.
 // All implementations must embed UnimplementedGithubSearchServiceServer
 // for forward compatibility.
+//
+// The GithubSearchService allows clients to search public GitHub code using gRPC.
 type GithubSearchServiceServer interface {
+	// Search performs a code search on GitHub using the provided term and optional user.
 	Search(context.Context, *SearchRequest) (*SearchResponse, error)
 	mustEmbedUnimplementedGithubSearchServiceServer()
 }
@@ -108,7 +114,7 @@ func _GithubSearchService_Search_Handler(srv interface{}, ctx context.Context, d
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var GithubSearchService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "githubsearch.GithubSearchService",
+	ServiceName: "GithubSearchService",
 	HandlerType: (*GithubSearchServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

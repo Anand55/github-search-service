@@ -12,32 +12,17 @@ import (
 )
 
 func main() {
-	serverAddr := os.Getenv("SERVER_ADDR")
-	if serverAddr == "" {
-		serverAddr = "localhost:50051"
-	}
-	// Set up a gRPC connection to the server (Docker Compose: use service name instead of localhost)
-	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+	serverAddr := getServerAddr()
 
-	if err != nil {
-		log.Fatalf("could not connect: %v", err)
-	}
+	conn, client := newSearchClient(serverAddr)
 	defer conn.Close()
 
-	// Create gRPC client from generated code
-	client := pb.NewGithubSearchServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	log.Println("Sending search request...")
 
-	// Build the request with search term and optional GitHub user
-	resp, err := client.Search(ctx, &pb.SearchRequest{
-		SearchTerm: "filename:Dockerfile",
-		User:       "",
-	})
-
+	resp, err := performSearch(ctx, client, "filename:Dockerfile", "")
 	if err != nil {
 		log.Fatalf("Search failed: %v", err)
 	}
@@ -49,4 +34,31 @@ func main() {
 			log.Printf("Repo: %s\nFile: %s\n", result.Repo, result.FileUrl)
 		}
 	}
+}
+
+// getServerAddr returns the gRPC server address from env or default
+func getServerAddr() string {
+	addr := os.Getenv("SERVER_ADDR")
+	if addr == "" {
+		return "localhost:50051"
+	}
+	return addr
+}
+
+// newSearchClient sets up a gRPC connection and returns the client
+func newSearchClient(addr string) (*grpc.ClientConn, pb.GithubSearchServiceClient) {
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("could not connect: %v", err)
+	}
+	client := pb.NewGithubSearchServiceClient(conn)
+	return conn, client
+}
+
+// performSearch constructs and sends a SearchRequest to the server
+func performSearch(ctx context.Context, client pb.GithubSearchServiceClient, term, user string) (*pb.SearchResponse, error) {
+	return client.Search(ctx, &pb.SearchRequest{
+		SearchTerm: term,
+		User:       user,
+	})
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"net/http"
 
 	pb "github-search-service/api"
 
@@ -10,14 +11,22 @@ import (
 )
 
 func main() {
+	log.Println("Starting gRPC server on port 50051...")
+
+	client := &http.Client{}
+
 	listener, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
+
 	grpcServer := grpc.NewServer()
-	pb.RegisterGithubSearchServiceServer(grpcServer, &githubSearchServer{})
-	log.Println("gRPC server running on port 50051...")
+	pb.RegisterGithubSearchServiceServer(grpcServer, &githubSearchServer{
+		httpClient: client,
+	})
+
+	log.Println("gRPC server running on :50051")
 	if err := grpcServer.Serve(listener); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		log.Fatalf("Failed to serve: %v", err)
 	}
 }

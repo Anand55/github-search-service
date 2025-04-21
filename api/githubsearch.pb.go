@@ -21,10 +21,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// SearchRequest defines the input parameters for the Search RPC.
 type SearchRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SearchTerm    string                 `protobuf:"bytes,1,opt,name=search_term,json=searchTerm,proto3" json:"search_term,omitempty"`
-	User          string                 `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The search term to pass to the GitHub Search API (e.g., "filename:Dockerfile")
+	SearchTerm string `protobuf:"bytes,1,opt,name=search_term,json=searchTerm,proto3" json:"search_term,omitempty"`
+	// Optional GitHub username to scope the search within a specific user
+	User          string `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -73,6 +76,7 @@ func (x *SearchRequest) GetUser() string {
 	return ""
 }
 
+// SearchResponse contains a list of matched file results.
 type SearchResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Results       []*Result              `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
@@ -117,10 +121,13 @@ func (x *SearchResponse) GetResults() []*Result {
 	return nil
 }
 
+// Result represents a single code search result from GitHub.
 type Result struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	FileUrl       string                 `protobuf:"bytes,1,opt,name=file_url,json=fileUrl,proto3" json:"file_url,omitempty"`
-	Repo          string                 `protobuf:"bytes,2,opt,name=repo,proto3" json:"repo,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// URL to the matching file on GitHub
+	FileUrl string `protobuf:"bytes,1,opt,name=file_url,json=fileUrl,proto3" json:"file_url,omitempty"`
+	// Full repository name where the file was found (e.g., "owner/repo")
+	Repo          string `protobuf:"bytes,2,opt,name=repo,proto3" json:"repo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -173,18 +180,18 @@ var File_api_githubsearch_proto protoreflect.FileDescriptor
 
 const file_api_githubsearch_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/githubsearch.proto\x12\fgithubsearch\"D\n" +
+	"\x16api/githubsearch.proto\"D\n" +
 	"\rSearchRequest\x12\x1f\n" +
 	"\vsearch_term\x18\x01 \x01(\tR\n" +
 	"searchTerm\x12\x12\n" +
-	"\x04user\x18\x02 \x01(\tR\x04user\"@\n" +
-	"\x0eSearchResponse\x12.\n" +
-	"\aresults\x18\x01 \x03(\v2\x14.githubsearch.ResultR\aresults\"7\n" +
+	"\x04user\x18\x02 \x01(\tR\x04user\"3\n" +
+	"\x0eSearchResponse\x12!\n" +
+	"\aresults\x18\x01 \x03(\v2\a.ResultR\aresults\"7\n" +
 	"\x06Result\x12\x19\n" +
 	"\bfile_url\x18\x01 \x01(\tR\afileUrl\x12\x12\n" +
-	"\x04repo\x18\x02 \x01(\tR\x04repo2Z\n" +
-	"\x13GithubSearchService\x12C\n" +
-	"\x06Search\x12\x1b.githubsearch.SearchRequest\x1a\x1c.githubsearch.SearchResponseb\x06proto3"
+	"\x04repo\x18\x02 \x01(\tR\x04repo2@\n" +
+	"\x13GithubSearchService\x12)\n" +
+	"\x06Search\x12\x0e.SearchRequest\x1a\x0f.SearchResponseb\x06proto3"
 
 var (
 	file_api_githubsearch_proto_rawDescOnce sync.Once
@@ -200,14 +207,14 @@ func file_api_githubsearch_proto_rawDescGZIP() []byte {
 
 var file_api_githubsearch_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_api_githubsearch_proto_goTypes = []any{
-	(*SearchRequest)(nil),  // 0: githubsearch.SearchRequest
-	(*SearchResponse)(nil), // 1: githubsearch.SearchResponse
-	(*Result)(nil),         // 2: githubsearch.Result
+	(*SearchRequest)(nil),  // 0: SearchRequest
+	(*SearchResponse)(nil), // 1: SearchResponse
+	(*Result)(nil),         // 2: Result
 }
 var file_api_githubsearch_proto_depIdxs = []int32{
-	2, // 0: githubsearch.SearchResponse.results:type_name -> githubsearch.Result
-	0, // 1: githubsearch.GithubSearchService.Search:input_type -> githubsearch.SearchRequest
-	1, // 2: githubsearch.GithubSearchService.Search:output_type -> githubsearch.SearchResponse
+	2, // 0: SearchResponse.results:type_name -> Result
+	0, // 1: GithubSearchService.Search:input_type -> SearchRequest
+	1, // 2: GithubSearchService.Search:output_type -> SearchResponse
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
