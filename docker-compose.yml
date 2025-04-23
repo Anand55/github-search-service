@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: github-search-server
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    ports:
+      - "50051:50051"
+
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: github-search-client
+    depends_on:
+      - server
+    environment:
+      - SERVER_ADDR=github-search-server:50051
+    command: ["go", "run", "client/main.go"]

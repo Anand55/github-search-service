@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package githubsearch;
+
+option go_package = "github-search-service/api;api";
+
+// The GithubSearchService allows clients to search public GitHub code using gRPC.
+service GithubSearchService {
+  // Search performs a code search on GitHub using the provided term and optional user.
+  rpc Search(SearchRequest) returns (SearchResponse);
+}
+
+// SearchRequest defines the input parameters for the Search RPC.
+message SearchRequest {
+  // The search term to pass to the GitHub Search API (e.g., "filename:Dockerfile")
+  string search_term = 1;
+
+  // Optional GitHub username to scope the search within a specific user
+  string user = 2;
+}
+
+// SearchResponse contains a list of matched file results.
+message SearchResponse {
+  repeated Result results = 1;
+}
+
+// Result represents a single code search result from GitHub.
+message Result {
+  // URL to the matching file on GitHub
+  string file_url = 1;
+
+  // Full repository name where the file was found (e.g., "owner/repo")
+  string repo = 2;
+}
